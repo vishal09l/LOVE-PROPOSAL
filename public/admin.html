@@ -1,0 +1,489 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gallery Admin ♡</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    padding:30px;
+    font-family:Arial,sans-serif;
+    background:#fff7fa;
+    color:#222;
+}
+
+.wrap{
+    max-width:1000px;
+    margin:auto;
+}
+
+h1{
+    margin:0 0 8px;
+}
+
+.sub{
+    color:#777;
+    margin-bottom:25px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:#fff;
+    border:1px solid #eee;
+    border-radius:18px;
+    padding:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.06);
+}
+
+.card img{
+    width:100%;
+    aspect-ratio:1/1;
+    object-fit:cover;
+    border-radius:12px;
+    display:block;
+    background:#f7edf1;
+}
+
+.slot{
+    font-size:12px;
+    color:#999;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin:12px 0 5px;
+}
+
+input[type="text"],
+input[type="file"]{
+    width:100%;
+    margin-bottom:10px;
+}
+
+input[type="text"]{
+    padding:11px;
+    border:1px solid #ddd;
+    border-radius:10px;
+}
+
+button{
+    width:100%;
+    border:0;
+    border-radius:12px;
+    padding:12px;
+    background:#ff3b6b;
+    color:white;
+    font-weight:700;
+    cursor:pointer;
+}
+
+button:disabled{
+    opacity:.6;
+    cursor:not-allowed;
+}
+
+.status{
+    font-size:12px;
+    margin-top:10px;
+    color:#777;
+    min-height:18px;
+}
+
+.empty{
+    padding:30px;
+    text-align:center;
+    background:#fff;
+    border-radius:18px;
+}
+
+/* =========================
+   PASSWORD SCREEN
+   ========================= */
+
+#loginScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.loginBox{
+    width:100%;
+    max-width:360px;
+    background:#fff;
+    padding:30px;
+    border-radius:20px;
+    box-shadow:0 15px 40px rgba(0,0,0,.08);
+    text-align:center;
+}
+
+.loginBox h2{
+    margin:0 0 8px;
+}
+
+.loginBox p{
+    color:#777;
+    font-size:14px;
+    margin-bottom:20px;
+}
+
+.loginBox input{
+    width:100%;
+    padding:12px;
+    margin-bottom:12px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    outline:none;
+}
+
+.loginBox button{
+    width:100%;
+}
+
+#loginError{
+    color:#e33;
+    font-size:13px;
+    margin-top:10px;
+    min-height:18px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     PASSWORD SCREEN
+     ========================= -->
+
+<div id="loginScreen">
+
+    <div class="loginBox">
+
+        <h2>Gallery Admin ♡</h2>
+
+        <p>Enter password to continue</p>
+
+        <input
+            type="password"
+            id="adminPassword"
+            placeholder="Enter password"
+            autocomplete="off"
+        >
+
+        <button type="button" onclick="loginAdmin()">
+            Enter
+        </button>
+
+        <div id="loginError"></div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================
+     ADMIN CONTENT
+     ========================= -->
+
+<div id="adminContent" style="display:none;">
+
+<div class="wrap">
+
+    <h1>Gallery Admin ♡</h1>
+
+    <div class="sub">
+        Replace photos and change captions. Only the existing 5 gallery slots can be edited.
+    </div>
+
+    <div id="galleryAdmin" class="grid">
+        Loading...
+    </div>
+
+</div>
+
+</div>
+
+
+<script>
+
+/* =========================
+   PASSWORD
+   ========================= */
+
+function loginAdmin(){
+
+    const password =
+        document.getElementById("adminPassword").value;
+
+    const error =
+        document.getElementById("loginError");
+
+    if(password === "Vishal@123"){
+
+        document.getElementById("loginScreen").style.display = "none";
+
+        document.getElementById("adminContent").style.display = "block";
+
+        loadGallery();
+
+    }else{
+
+        error.textContent = "Wrong password";
+
+        document.getElementById("adminPassword").value = "";
+
+        document.getElementById("adminPassword").focus();
+
+    }
+}
+
+
+/* =========================
+   ENTER KEY
+   ========================= */
+
+document.getElementById("adminPassword").addEventListener(
+    "keydown",
+    function(event){
+
+        if(event.key === "Enter"){
+            loginAdmin();
+        }
+
+    }
+);
+
+
+/* =========================
+   GALLERY
+   ========================= */
+
+async function loadGallery(){
+
+    const box = document.getElementById("galleryAdmin");
+
+    box.innerHTML = "Loading...";
+
+    try{
+
+        const res = await fetch("/api/gallery", {
+            cache:"no-store"
+        });
+
+        if(!res.ok){
+            throw new Error("Failed to load gallery");
+        }
+
+        const photos = await res.json();
+
+        // ONLY FIRST 5 EXISTING SLOTS
+        const fixed = Array.isArray(photos)
+            ? photos.slice(0,5)
+            : [];
+
+        if(fixed.length === 0){
+
+            box.innerHTML = `
+                <div class="empty">
+                    No gallery records found.
+                </div>
+            `;
+
+            return;
+        }
+
+        box.innerHTML = "";
+
+        fixed.forEach((photo,index)=>{
+
+            const card = document.createElement("div");
+
+            card.className = "card";
+
+            card.innerHTML = `
+
+                <img
+                    src="${escapeHtml(photo.image_url || "")}"
+                    alt="Photo ${index+1}"
+                >
+
+                <div class="slot">
+                    Photo ${index+1}
+                </div>
+
+                <input
+                    type="text"
+                    class="captionInput"
+                    value="${escapeHtml(photo.title || "")}"
+                    placeholder="Enter caption"
+                >
+
+                <input
+                    type="file"
+                    class="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                >
+
+                <button type="button" class="saveBtn">
+                    Save Changes
+                </button>
+
+                <div class="status"></div>
+            `;
+
+            const img = card.querySelector(".card img");
+            const captionInput = card.querySelector(".captionInput");
+            const fileInput = card.querySelector(".file");
+            const button = card.querySelector(".saveBtn");
+            const status = card.querySelector(".status");
+
+            button.addEventListener("click", async ()=>{
+
+                const newCaption = captionInput.value.trim();
+                const newFile = fileInput.files[0];
+
+                if(!newCaption && !newFile){
+
+                    status.textContent =
+                        "Change the caption or choose a new photo.";
+
+                    return;
+                }
+
+                button.disabled = true;
+                status.textContent = "Saving changes...";
+
+                try{
+
+                    // =========================
+                    // UPDATE CAPTION
+                    // =========================
+
+                    if(newCaption !== (photo.title || "")){
+
+                        const captionResponse = await fetch(
+                            `/api/gallery/${photo.id}`,
+                            {
+                                method:"PUT",
+                                headers:{
+                                    "Content-Type":"application/json"
+                                },
+                                body:JSON.stringify({
+                                    title:newCaption
+                                })
+                            }
+                        );
+
+                        const captionResult =
+                            await captionResponse.json();
+
+                        if(!captionResponse.ok){
+
+                            throw new Error(
+                                captionResult.error ||
+                                "Caption update failed"
+                            );
+                        }
+                    }
+
+
+                    // =========================
+                    // REPLACE PHOTO
+                    // =========================
+
+                    if(newFile){
+
+                        const formData = new FormData();
+
+                        formData.append("image",newFile);
+
+                        const imageResponse = await fetch(
+                            `/api/gallery/${photo.id}/image`,
+                            {
+                                method:"PUT",
+                                body:formData
+                            }
+                        );
+
+                        const imageResult =
+                            await imageResponse.json();
+
+                        if(!imageResponse.ok){
+
+                            throw new Error(
+                                imageResult.error ||
+                                "Photo replacement failed"
+                            );
+                        }
+
+                        img.src =
+                            imageResult.image_url +
+                            "?t=" +
+                            Date.now();
+                    }
+
+
+                    // Update local value
+                    photo.title = newCaption;
+
+                    fileInput.value = "";
+
+                    status.textContent =
+                        "Saved successfully ♡";
+
+                }catch(error){
+
+                    console.error(error);
+
+                    status.textContent =
+                        error.message ||
+                        "Something went wrong.";
+
+                }finally{
+
+                    button.disabled = false;
+
+                }
+
+            });
+
+            box.appendChild(card);
+
+        });
+
+    }catch(error){
+
+        console.error(error);
+
+        box.innerHTML = `
+            <div class="empty">
+                Unable to load gallery.<br>
+                Make sure the server is running.
+            </div>
+        `;
+    }
+}
+
+
+function escapeHtml(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+</script>
+
+</body>
+</html>
